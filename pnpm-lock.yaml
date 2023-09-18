@@ -35,6 +35,9 @@ dependencies:
   typescript:
     specifier: 5.2.2
     version: 5.2.2
+  window.ai:
+    specifier: ^0.2.4
+    version: 0.2.4
 
 packages:
 
@@ -900,6 +903,10 @@ packages:
     dependencies:
       glob-to-regexp: 0.4.1
       graceful-fs: 4.2.11
+    dev: false
+
+  /window.ai@0.2.4:
+    resolution: {integrity: sha512-HezD3spVwlnaDS0jV4idB/2ssQw11WYps5Pc6VDndzvbjypFuVKgSaemgHqY8JpokiMzjSWLTjrWhtuWiyFwFA==}
     dev: false
 
   /wrappy@1.0.2:

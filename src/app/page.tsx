@@ -1,113 +1,172 @@
-import Image from 'next/image'
+"use client";
+import { useEffect,  useState } from "react";
+import {
+  ChatMessage,
+  EventType,
+  MessageOutput,
+  WindowAI,
+  getWindowAI,
+} from "window.ai";
 
 export default function Home() {
+  const [ai, setAi] = useState<WindowAI | null> (null)
+  const [theModel, setTheModel] = useState<undefined | string>();
+  const [allMessages, setAllMessages] = useState<ChatMessage[] | []>([])
+  // const [allMessages, setallMessages] = useState<ChatMessage[] | []>([])
+  const [theInput, setTheInput] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+
+
+  const getResponses = async () => {
+    setIsLoading(true);
+    const userMessage: ChatMessage = {role:"user", content:theInput}
+    setTheInput("")
+    setAllMessages((prev)=>[...prev, userMessage])
+    // setallMessages((prev)=>[...prev, userMessage])
+    let tempArray: ChatMessage[] = [...allMessages, userMessage] 
+    const streamingOptions = {
+      temperature: 0.7,
+      maxTokens: 1000,
+      onStreamResult: (result: MessageOutput | null, error: string | null) => {
+        if (error) {
+          console.error("window.ai streaming completion failed.");
+          return;
+        } else if (result) {
+          setIsLoading(false )
+          const lastMessage = tempArray[tempArray.length - 1];
+          if (lastMessage.role === "user") {
+            setAllMessages ((prev)=>[
+              ...prev,
+              {
+                role: "assistant",
+                content: result.message.content,
+              },
+            ]);
+            tempArray.push({
+              role: "assistant", content: result.message.content})
+          } else {
+            const updatedMessages = tempArray.map((message, index) => {
+              if (index === tempArray.length - 1) {
+                return {
+                  ...message,
+                  content: message.content + result.message.content,
+                };
+              }
+              return message;
+            });
+            tempArray=updatedMessages
+            // setallMessages(updatedMessages)
+            setAllMessages(updatedMessages)
+          }
+          // setAllMessages(prev=>[...prev, tempObj ]);
+        }
+      },
+       
+    };
+    
+    if (ai){
+     try {
+      await ai.generateText(
+        {
+          messages: tempArray,
+        },
+        streamingOptions
+      );
+    } catch (e) {
+      console.error("window.ai generation completion failed.");
+      console.error(e);
+    }
+  };
+
+
+}
+
+useEffect(()=>{
+}, [allMessages])
+
+  useEffect(() => {
+    const init = async () => {
+      const getter = await getWindowAI();
+       setAi(getter)
+      if (getter) {
+        setTheModel(await getter.getCurrentModel());
+        getter.addEventListener((event: EventType, data: any) => {
+          if (event === "model_changed") {
+            setTheModel(data.model);
+            
+          }
+        });
+      } else {
+      }
+    };
+    init();
+  }, []);
+
+
+
+
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <div className="z-10 max-w-5xl w-full items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Get started by editing&nbsp;
-          <code className="font-mono font-bold">src/app/page.tsx</code>
-        </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:h-auto lg:w-auto lg:bg-none">
-          <a
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{' '}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className="dark:invert"
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
-        </div>
-      </div>
+    <main className="flex min-h-screen flex-col items-center justify-between px-24 py-5 bg-gray-900">
+      <h1 className="text-5xl font-sans">MyAI</h1>
 
-      <div className="relative flex place-items-center before:absolute before:h-[300px] before:w-[480px] before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-[240px] after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700 before:dark:opacity-10 after:dark:from-sky-900 after:dark:via-[#0141ff] after:dark:opacity-40 before:lg:h-[360px] z-[-1]">
-        <Image
-          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
+      <>
+        {theModel?      
+        (
+          <div className="flex   h-[35rem] w-[40rem] flex-col items-center justify-center bg-gray-600 rounded-xl">
+            <div className=" h-full flex flex-col gap-2 overflow-y-auto py-8 px-3 w-full">
+              <div className="-mt-2 text-center">
+                <span >{"Currently using: "+ theModel }</span>
 
-      <div className="mb-32 grid text-center lg:max-w-5xl lg:w-full lg:mb-0 lg:grid-cols-4 lg:text-left">
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Docs{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
+              
+              </div>
+              {allMessages
+                ? allMessages.map((e) => {
+                    return (
+                      <div
+                        key={e.content}
+                        className={`w-max max-w-[18rem] rounded-md px-4 py-3 h-min ${
+                          e.role === "assistant"
+                            ? "self-start  bg-gray-200 text-gray-800"
+                            : "self-end  bg-gray-800 text-gray-50"
+                        } `}
+                      >
+                        {e.content}
+                      </div>
+                    );
+                  })
+                : ""}
 
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Learn{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Learn about Next.js in an interactive course with&nbsp;quizzes!
-          </p>
-        </a>
+              {isLoading ? <div className="self-start  bg-gray-200 text-gray-800 w-max max-w-[18rem] rounded-md px-4 py-3 h-min">*thinking*</div> : ""}
+            </div>
 
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Templates{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Explore the Next.js 13 playground.
-          </p>
-        </a>
 
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Deploy{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
+            <div className="relative  w-[80%] border-red-500 bottom-4 flex justify-center">
+            <div className="flex w-full"> <textarea
+                value={theInput}
+                onChange={(event) => setTheInput(event.target.value)}
+                className="w-[85%] h-10 px-3 py-2 resize-none overflow-y-auto text-black bg-gray-300 rounded-l-lg outline-none"
+                // onKeyDown={Submit}
+              />
+              <button
+                onClick={getResponses}
+                className="w-[15%] bg-blue-500 px-4 py-2  rounded-r-lg "
+              >
+                send
+              </button>
+              </div>
+            </div>
+          </div>
+        ) :(
+          <div className="flex   h-[35rem] w-[40rem] flex-col items-center justify-center bg-gray-600 rounded-xl">
+            <div className="flex self-center  my-24 flex-col">
+              <div>Select a model from your Window extension</div>
+            </div>
+          </div>
+        ) 
+}
+      </>
+
+      <div></div>
     </main>
-  )
+  );
 }
